@@ -63,4 +63,54 @@ export const teamApi = {
     const response = await api.post(`/teams/${id}/leave`);
     return response.data;
   },
+  getActivities: async (id: string, limit: number = 50, offset: number = 0) => {
+    const response = await api.get<{
+      activities: Array<{
+        id: string;
+        action_type: string;
+        description: string;
+        old_value: string | null;
+        new_value: string | null;
+        created_at: string;
+        actor: {
+          id: string;
+          name: string;
+          email: string;
+          avatar_url?: string | null;
+        };
+        target_user?: {
+          id: string;
+          name: string;
+          email: string;
+        } | null;
+      }>;
+      total: number;
+      limit: number;
+      offset: number;
+    }>(`/teams/${id}/activities?limit=${limit}&offset=${offset}`);
+    return response.data;
+  },
+  getStatistics: async (id: string, period: string = '30d') => {
+    const response = await api.get<{
+      period: string;
+      creationTrend: Record<string, number>;
+      completionTrend: Record<string, number>;
+      memberStats: Array<{
+        member: {
+          id: string;
+          name: string;
+          email: string;
+        };
+        assigned: number;
+        completed: number;
+      }>;
+      statusPerProject: Array<{
+        name: string;
+        Backlog: number;
+        'In Progress': number;
+        Done: number;
+      }>;
+    }>(`/teams/${id}/statistics?period=${period}`);
+    return response.data;
+  },
 };

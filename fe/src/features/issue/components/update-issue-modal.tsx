@@ -205,8 +205,8 @@ export default function UpdateIssueModal({ issue, onClose }: UpdateIssueModalPro
               >
                 <option value="">Unassigned</option>
                 {teamMembers?.map((member) => (
-                  <option key={member.user.id} value={member.user.id}>
-                    {member.user.name}
+                  <option key={member.users?.id} value={member.users?.id}>
+                    {member.users?.name || 'Unknown'}
                   </option>
                 ))}
               </select>

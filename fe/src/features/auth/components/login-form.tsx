@@ -6,8 +6,8 @@ import * as z from "zod";
 import { useMutation } from "@tanstack/react-query";
 import { authApi } from "../api/auth-api";
 import { useAuthStore } from "@/store/auth-store";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
@@ -20,8 +20,17 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const setUser = useAuthStore((state) => state.setUser);
   const [error, setError] = useState("");
+
+  // Check for error in URL query params (from OAuth callback)
+  useEffect(() => {
+    const errorParam = searchParams.get("error");
+    if (errorParam) {
+      setError(decodeURIComponent(errorParam));
+    }
+  }, [searchParams]);
 
   const {
     register,
@@ -127,13 +136,28 @@ export default function LoginForm() {
       <button
         type="button"
         onClick={async () => {
-          const supabase = createClient();
-          await supabase.auth.signInWithOAuth({
-            provider: "google",
-            options: {
-              redirectTo: `${window.location.origin}/auth/callback`,
-            },
-          });
+          try {
+            setError(""); // Clear any previous errors
+            const supabase = createClient();
+            const { data, error: oauthError } =
+              await supabase.auth.signInWithOAuth({
+                provider: "google",
+                options: {
+                  redirectTo: `${window.location.origin}/auth/callback`,
+                },
+              });
+
+            if (oauthError) {
+              console.error("OAuth error:", oauthError);
+              setError(`Google login failed: ${oauthError.message}`);
+            }
+          } catch (err: any) {
+            console.error("Unexpected error during Google login:", err);
+            setError(
+              err?.message ||
+                "Failed to initiate Google login. Please check your configuration."
+            );
+          }
         }}
         className="flex items-center justify-center w-full px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
       >

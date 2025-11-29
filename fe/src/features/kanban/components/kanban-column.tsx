@@ -1,12 +1,15 @@
-'use client';
+"use client";
 
-import { useDroppable } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { Issue } from '../api/kanban-api';
-import KanbanCard from './kanban-card';
-import { cn } from '@/lib/utils';
+import { useDroppable } from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { Issue } from "../api/kanban-api";
+import KanbanCard from "./kanban-card";
+import { cn } from "@/lib/utils";
 
 interface KanbanColumnProps {
   id: string;
@@ -45,7 +48,13 @@ function SortableIssueCard({ issue }: SortableIssueCardProps) {
   );
 }
 
-export default function KanbanColumn({ id, title, issues, color, wipLimit }: KanbanColumnProps) {
+export default function KanbanColumn({
+  id,
+  title,
+  issues,
+  color,
+  wipLimit,
+}: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id,
   });
@@ -53,16 +62,18 @@ export default function KanbanColumn({ id, title, issues, color, wipLimit }: Kan
   const isOverLimit = wipLimit !== undefined && issues.length > wipLimit;
 
   return (
-    <div className="flex flex-col h-full min-w-[300px] bg-gray-50 rounded-lg">
-      <div className={cn('px-4 py-3 border-b-4 rounded-t-lg', color)}>
+    <div className="flex flex-col h-full min-w-[280px] sm:min-w-[300px] bg-gray-50 rounded-lg shrink-0">
+      <div className={cn("px-4 py-3 border-b-4 rounded-t-lg", color)}>
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
           <div className="flex items-center space-x-2">
             {wipLimit !== undefined && (
-              <span className={cn(
-                'text-xs font-medium',
-                isOverLimit ? 'text-red-600' : 'text-gray-600'
-              )}>
+              <span
+                className={cn(
+                  "text-xs font-medium",
+                  isOverLimit ? "text-red-600" : "text-gray-600"
+                )}
+              >
                 {issues.length}/{wipLimit}
               </span>
             )}
@@ -77,21 +88,24 @@ export default function KanbanColumn({ id, title, issues, color, wipLimit }: Kan
           </div>
         )}
       </div>
-      
+
       <div
         ref={setNodeRef}
         className={cn(
-          'flex-1 p-4 space-y-3 overflow-y-auto',
-          isOver && 'bg-blue-50',
-          isOverLimit && 'bg-red-50'
+          "flex-1 p-4 space-y-3 overflow-y-auto",
+          isOver && "bg-blue-50",
+          isOverLimit && "bg-red-50"
         )}
       >
-        <SortableContext items={issues.map(i => i.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext
+          items={issues.map((i) => i.id)}
+          strategy={verticalListSortingStrategy}
+        >
           {issues.map((issue) => (
             <SortableIssueCard key={issue.id} issue={issue} />
           ))}
         </SortableContext>
-        
+
         {issues.length === 0 && (
           <div className="flex items-center justify-center h-32 text-sm text-gray-400 border-2 border-dashed border-gray-300 rounded-lg">
             Drop issues here

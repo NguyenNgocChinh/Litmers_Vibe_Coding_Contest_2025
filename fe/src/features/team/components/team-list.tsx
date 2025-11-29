@@ -1,17 +1,21 @@
-'use client';
+"use client";
 
-import { useQuery } from '@tanstack/react-query';
-import { teamApi } from '../api/team-api';
-import Link from 'next/link';
-import { Plus } from 'lucide-react';
-import { useState } from 'react';
-import CreateTeamModal from './create-team-modal';
-import LoadingSpinner from '@/components/ui/loading-spinner';
+import { useQuery } from "@tanstack/react-query";
+import { teamApi } from "../api/team-api";
+import Link from "next/link";
+import { Plus } from "lucide-react";
+import { useState } from "react";
+import CreateTeamModal from "./create-team-modal";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 
 export default function TeamList() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const { data: teams, isLoading, error } = useQuery({
-    queryKey: ['teams'],
+  const {
+    data: teams,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["teams"],
     queryFn: teamApi.getAll,
   });
 
@@ -20,18 +24,18 @@ export default function TeamList() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Teams</h2>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Teams</h2>
         <button
           onClick={() => setIsCreateModalOpen(true)}
-          className="flex items-center px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"
+          className="flex items-center justify-center px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 w-full sm:w-auto"
         >
           <Plus className="w-5 h-5 mr-2" />
           Create Team
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {teams?.map((team) => (
           <Link
             key={team.id}

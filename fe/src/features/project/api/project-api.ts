@@ -33,4 +33,34 @@ export const projectApi = {
     const response = await api.delete(`/projects/${id}`);
     return response.data;
   },
+  getStatuses: async (id: string) => {
+    const response = await api.get<Array<{ id: string; name: string; position: number; color?: string; wip_limit?: number | null }>>(`/projects/${id}/statuses`);
+    return response.data;
+  },
+  getDashboard: async (id: string) => {
+    const response = await api.get<{
+      countByStatus: Record<string, number>;
+      countByPriority: Record<string, number>;
+      completionRate: number;
+      total: number;
+      doneCount: number;
+      recentlyCreated: Array<{
+        id: string;
+        title: string;
+        status: string;
+        priority: string;
+        due_date?: string;
+        created_at: string;
+      }>;
+      dueSoon: Array<{
+        id: string;
+        title: string;
+        status: string;
+        priority: string;
+        due_date?: string;
+        created_at: string;
+      }>;
+    }>(`/projects/${id}/dashboard`);
+    return response.data;
+  },
 };

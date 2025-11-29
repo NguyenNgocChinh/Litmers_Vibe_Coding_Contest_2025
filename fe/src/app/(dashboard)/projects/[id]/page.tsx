@@ -1,18 +1,19 @@
-'use client';
+"use client";
 
-import { useQuery } from '@tanstack/react-query';
-import { projectApi } from '@/features/project/api/project-api';
-import { useParams } from 'next/navigation';
-import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
-import LoadingSpinner from '@/components/ui/loading-spinner';
+import { useQuery } from "@tanstack/react-query";
+import { projectApi } from "@/features/project/api/project-api";
+import { useParams } from "next/navigation";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import LoadingSpinner from "@/components/ui/loading-spinner";
+import ProjectDashboard from "@/features/project/components/project-dashboard";
 
 export default function ProjectDetailPage() {
   const params = useParams();
   const projectId = params.id as string;
 
   const { data: project, isLoading } = useQuery({
-    queryKey: ['project', projectId],
+    queryKey: ["project", projectId],
     queryFn: () => projectApi.getOne(projectId),
   });
 
@@ -20,15 +21,21 @@ export default function ProjectDetailPage() {
   if (!project) return <div>Project not found</div>;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center space-x-4">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-wrap items-center gap-3 sm:gap-4">
         <Link href="/projects" className="text-gray-400 hover:text-gray-600">
-          <ArrowLeft className="w-6 h-6" />
+          <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
         </Link>
-        <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-          project.visibility === 'PUBLIC' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-        }`}>
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex-1 min-w-0">
+          {project.name}
+        </h1>
+        <span
+          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+            project.visibility === "PUBLIC"
+              ? "bg-green-100 text-green-800"
+              : "bg-gray-100 text-gray-800"
+          }`}
+        >
           {project.visibility}
         </span>
       </div>
@@ -39,7 +46,7 @@ export default function ProjectDetailPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
         {/* Kanban Board Preview */}
         <div className="p-6 bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between mb-4">
@@ -79,8 +86,14 @@ export default function ProjectDetailPage() {
               Manage →
             </Link>
           </div>
-          <p className="text-gray-500">Create and manage labels for organizing issues.</p>
+          <p className="text-gray-500">
+            Create and manage labels for organizing issues.
+          </p>
         </div>
+      </div>
+
+      <div className="mt-6">
+        <ProjectDashboard projectId={projectId} />
       </div>
     </div>
   );

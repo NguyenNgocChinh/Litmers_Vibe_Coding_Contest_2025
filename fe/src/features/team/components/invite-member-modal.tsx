@@ -38,7 +38,13 @@ export default function InviteMemberModal({ teamId, onClose }: InviteMemberModal
       onClose();
     },
     onError: (err: any) => {
-        setError(err.response?.data?.message || 'Failed to invite member');
+      // Backend returns error in format: { error: { code, message, details } }
+      const errorMessage = 
+        err.response?.data?.error?.message || 
+        err.response?.data?.message || 
+        err.message || 
+        'Failed to invite member';
+      setError(errorMessage);
     }
   });
 

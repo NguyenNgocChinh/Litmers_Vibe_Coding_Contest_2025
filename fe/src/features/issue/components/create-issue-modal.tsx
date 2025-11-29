@@ -1,21 +1,24 @@
-'use client';
+"use client";
 
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
-import { issueApi } from '../api/issue-api';
-import { projectApi } from '@/features/project/api/project-api';
-import { teamApi } from '@/features/team/api/team-api';
-import { labelApi, type Label } from '@/features/label/api/label-api';
-import { aiApi } from '@/features/ai/api/ai-api';
-import { X, Sparkles, AlertTriangle } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { issueApi } from "../api/issue-api";
+import { projectApi } from "@/features/project/api/project-api";
+import { teamApi } from "@/features/team/api/team-api";
+import { labelApi, type Label } from "@/features/label/api/label-api";
+import { aiApi } from "@/features/ai/api/ai-api";
+import { X, Sparkles, AlertTriangle } from "lucide-react";
+import { useState, useEffect } from "react";
 
 const createIssueSchema = z.object({
-  title: z.string().min(1, 'Title is required').max(200, 'Title must be at most 200 characters'),
+  title: z
+    .string()
+    .min(1, "Title is required")
+    .max(200, "Title must be at most 200 characters"),
   description: z.string().optional(),
-  priority: z.enum(['LOW', 'MEDIUM', 'HIGH']),
+  priority: z.enum(["LOW", "MEDIUM", "HIGH"]),
   assignee_id: z.string().optional(),
   due_date: z.string().optional(),
   label_ids: z.array(z.string()).optional(),
@@ -28,31 +31,39 @@ interface CreateIssueModalProps {
   onClose: () => void;
 }
 
-export default function CreateIssueModal({ projectId, onClose }: CreateIssueModalProps) {
+export default function CreateIssueModal({
+  projectId,
+  onClose,
+}: CreateIssueModalProps) {
   const queryClient = useQueryClient();
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
-  const [duplicates, setDuplicates] = useState<Array<{ id: string; title: string; similarity: number }>>([]);
+  const [duplicates, setDuplicates] = useState<
+    Array<{ id: string; title: string; similarity: number }>
+  >([]);
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
   const [aiLabelLoading, setAiLabelLoading] = useState(false);
   const [duplicateLoading, setDuplicateLoading] = useState(false);
-  
+
   // Get project to get team_id
   const { data: project } = useQuery({
-    queryKey: ['project', projectId],
+    queryKey: ["project", projectId],
     queryFn: () => projectApi.getOne(projectId),
   });
 
   // Get team members
   const { data: teamMembers } = useQuery({
-    queryKey: ['team-members', project?.team_id],
-    queryFn: () => teamApi.getMembers(project!.team_id),
+    queryKey: ["team-members", project?.team_id],
+    queryFn: () => {
+      if (!project?.team_id) throw new Error('Project team_id is required');
+      return teamApi.getMembers(project.team_id);
+    },
     enabled: !!project?.team_id,
   });
 
   // Get labels
   const { data: labels } = useQuery({
-    queryKey: ['labels', projectId],
+    queryKey: ["labels", projectId],
     queryFn: () => labelApi.getAll(projectId),
   });
 
@@ -65,13 +76,13 @@ export default function CreateIssueModal({ projectId, onClose }: CreateIssueModa
   } = useForm<CreateIssueFormData>({
     resolver: zodResolver(createIssueSchema),
     defaultValues: {
-      priority: 'MEDIUM',
+      priority: "MEDIUM",
       label_ids: [],
     },
   });
 
-  const title = watch('title');
-  const description = watch('description');
+  const title = watch("title");
+  const description = watch("description");
 
   // Auto-detect duplicates when title changes
   useEffect(() => {
@@ -89,7 +100,7 @@ export default function CreateIssueModal({ projectId, onClose }: CreateIssueModa
 
   const handleDuplicateDetection = async () => {
     if (!title || !projectId) return;
-    
+
     setDuplicateLoading(true);
     try {
       const result = await aiApi.detectDuplicates({
@@ -106,7 +117,7 @@ export default function CreateIssueModal({ projectId, onClose }: CreateIssueModa
       }
     } catch (error) {
       // Silently fail - duplicate detection is optional
-      console.error('Failed to detect duplicates:', error);
+      console.error("Failed to detect duplicates:", error);
     } finally {
       setDuplicateLoading(false);
     }
@@ -114,7 +125,7 @@ export default function CreateIssueModal({ projectId, onClose }: CreateIssueModa
 
   const handleAutoLabel = async () => {
     if (!title) return;
-    
+
     setAiLabelLoading(true);
     try {
       const result = await aiApi.autoLabel({
@@ -124,16 +135,18 @@ export default function CreateIssueModal({ projectId, onClose }: CreateIssueModa
       // Map label names to label IDs
       if (result.labels && labels) {
         const matchedLabels = result.labels
-          .map((labelName) => labels.find((l) => l.name.toLowerCase() === labelName.toLowerCase()))
+          .map((labelName) =>
+            labels.find((l) => l.name.toLowerCase() === labelName.toLowerCase())
+          )
           .filter(Boolean)
           .map((l) => l!.id)
           .slice(0, 5); // Max 5 labels
-        
+
         setSelectedLabels(matchedLabels);
-        setValue('label_ids', matchedLabels);
+        setValue("label_ids", matchedLabels);
       }
     } catch (error: any) {
-      setError(error.response?.data?.message || 'Failed to generate labels');
+      setError(error.response?.data?.message || "Failed to generate labels");
     } finally {
       setAiLabelLoading(false);
     }
@@ -141,43 +154,53 @@ export default function CreateIssueModal({ projectId, onClose }: CreateIssueModa
 
   const toggleLabel = (labelId: string) => {
     if (selectedLabels.length >= 5 && !selectedLabels.includes(labelId)) {
-      setError('Maximum 5 labels per issue');
+      setError("Maximum 5 labels per issue");
       return;
     }
-    
+
     const newLabels = selectedLabels.includes(labelId)
       ? selectedLabels.filter((id) => id !== labelId)
       : [...selectedLabels, labelId];
-    
+
     setSelectedLabels(newLabels);
-    setValue('label_ids', newLabels);
-    setError('');
+    setValue("label_ids", newLabels);
+    setError("");
   };
 
   const createIssueMutation = useMutation({
-    mutationFn: (data: CreateIssueFormData) => issueApi.create({ ...data, project_id: projectId, label_ids: selectedLabels }),
+    mutationFn: (data: CreateIssueFormData) =>
+      issueApi.create({
+        ...data,
+        project_id: projectId,
+        label_ids: selectedLabels,
+      }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['issues', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['kanban-board', projectId] });
+      queryClient.invalidateQueries({ queryKey: ["issues", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["kanban-board", projectId] });
       onClose();
     },
     onError: (err: any) => {
-      setError(err.response?.data?.message || 'Failed to create issue');
+      setError(err.response?.data?.message || "Failed to create issue");
     },
   });
 
   const onSubmit = (data: CreateIssueFormData) => {
-    setError('');
+    setError("");
     createIssueMutation.mutate({ ...data, label_ids: selectedLabels });
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="w-full max-w-2xl p-6 bg-white rounded-lg shadow-xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+      <div className="w-full max-w-2xl p-4 sm:p-6 bg-white rounded-lg shadow-xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-medium text-gray-900">Create New Issue</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
-            <X className="w-6 h-6" />
+          <h3 className="text-base sm:text-lg font-medium text-gray-900">
+            Create New Issue
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-500"
+          >
+            <X className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         </div>
 
@@ -202,7 +225,7 @@ export default function CreateIssueModal({ projectId, onClose }: CreateIssueModa
                         rel="noopener noreferrer"
                         className="text-blue-600 hover:underline"
                       >
-                        {dup.title} ({(dup.similarity)}% similar)
+                        {dup.title} ({dup.similarity}% similar)
                       </a>
                     </li>
                   ))}
@@ -220,24 +243,32 @@ export default function CreateIssueModal({ projectId, onClose }: CreateIssueModa
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Title *</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Title *
+            </label>
             <input
-              {...register('title')}
+              {...register("title")}
               type="text"
               className="w-full px-3 py-2 mt-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Fix login bug"
             />
             {errors.title && (
-              <p className="mt-1 text-sm text-red-500">{errors.title.message}</p>
+              <p className="mt-1 text-sm text-red-500">
+                {errors.title.message}
+              </p>
             )}
             {duplicateLoading && (
-              <p className="mt-1 text-xs text-gray-500">Checking for duplicates...</p>
+              <p className="mt-1 text-xs text-gray-500">
+                Checking for duplicates...
+              </p>
             )}
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="block text-sm font-medium text-gray-700">Description (Optional)</label>
+              <label className="block text-sm font-medium text-gray-700">
+                Description (Optional)
+              </label>
               <button
                 type="button"
                 onClick={handleAutoLabel}
@@ -245,22 +276,24 @@ export default function CreateIssueModal({ projectId, onClose }: CreateIssueModa
                 className="flex items-center px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Sparkles className="w-3 h-3 mr-1" />
-                {aiLabelLoading ? 'Generating...' : 'AI Auto-Label'}
+                {aiLabelLoading ? "Generating..." : "AI Auto-Label"}
               </button>
             </div>
             <textarea
-              {...register('description')}
+              {...register("description")}
               rows={4}
               className="w-full px-3 py-2 mt-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Describe the issue..."
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Priority</label>
+              <label className="block text-sm font-medium text-gray-700">
+                Priority
+              </label>
               <select
-                {...register('priority')}
+                {...register("priority")}
                 className="w-full px-3 py-2 mt-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="LOW">Low</option>
@@ -270,15 +303,17 @@ export default function CreateIssueModal({ projectId, onClose }: CreateIssueModa
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Assignee</label>
+              <label className="block text-sm font-medium text-gray-700">
+                Assignee
+              </label>
               <select
-                {...register('assignee_id')}
+                {...register("assignee_id")}
                 className="w-full px-3 py-2 mt-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Unassigned</option>
                 {teamMembers?.map((member) => (
-                  <option key={member.user.id} value={member.user.id}>
-                    {member.user.name}
+                  <option key={member.users?.id} value={member.users?.id}>
+                    {member.users?.name || 'Unknown'}
                   </option>
                 ))}
               </select>
@@ -286,9 +321,11 @@ export default function CreateIssueModal({ projectId, onClose }: CreateIssueModa
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Due Date</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Due Date
+            </label>
             <input
-              {...register('due_date')}
+              {...register("due_date")}
               type="date"
               className="w-full px-3 py-2 mt-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -307,13 +344,19 @@ export default function CreateIssueModal({ projectId, onClose }: CreateIssueModa
                     onClick={() => toggleLabel(label.id)}
                     className={`px-3 py-1 text-sm rounded-full border transition-colors ${
                       selectedLabels.includes(label.id)
-                        ? 'bg-opacity-20 border-opacity-50'
-                        : 'bg-white border-gray-300 hover:bg-gray-50'
+                        ? "bg-opacity-20 border-opacity-50"
+                        : "bg-white border-gray-300 hover:bg-gray-50"
                     }`}
                     style={{
-                      backgroundColor: selectedLabels.includes(label.id) ? `${label.color}33` : undefined,
-                      borderColor: selectedLabels.includes(label.id) ? label.color : undefined,
-                      color: selectedLabels.includes(label.id) ? label.color : '#374151',
+                      backgroundColor: selectedLabels.includes(label.id)
+                        ? `${label.color}33`
+                        : undefined,
+                      borderColor: selectedLabels.includes(label.id)
+                        ? label.color
+                        : undefined,
+                      color: selectedLabels.includes(label.id)
+                        ? label.color
+                        : "#374151",
                     }}
                   >
                     {label.name}
@@ -321,24 +364,26 @@ export default function CreateIssueModal({ projectId, onClose }: CreateIssueModa
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-500">No labels available for this project</p>
+              <p className="text-sm text-gray-500">
+                No labels available for this project
+              </p>
             )}
           </div>
 
-          <div className="flex justify-end space-x-3 pt-4 border-t">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={createIssueMutation.isPending}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+              className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
             >
-              {createIssueMutation.isPending ? 'Creating...' : 'Create Issue'}
+              {createIssueMutation.isPending ? "Creating..." : "Create Issue"}
             </button>
           </div>
         </form>

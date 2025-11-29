@@ -1,18 +1,18 @@
-'use client';
+"use client";
 
-import { useQuery } from '@tanstack/react-query';
-import { teamApi } from '@/features/team/api/team-api';
-import ProjectList from '@/features/project/components/project-list';
-import { useState } from 'react';
-import LoadingSpinner from '@/components/ui/loading-spinner';
+import { useQuery } from "@tanstack/react-query";
+import { teamApi } from "@/features/team/api/team-api";
+import ProjectList from "@/features/project/components/project-list";
+import { useState } from "react";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 
 export default function ProjectsPage() {
   const { data: teams, isLoading } = useQuery({
-    queryKey: ['teams'],
+    queryKey: ["teams"],
     queryFn: teamApi.getAll,
   });
 
-  const [selectedTeamId, setSelectedTeamId] = useState<string>('');
+  const [selectedTeamId, setSelectedTeamId] = useState<string>("");
 
   // Auto-select first team
   if (!selectedTeamId && teams && teams.length > 0) {
@@ -31,12 +31,14 @@ export default function ProjectsPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">Select Team</label>
+      <div className="mb-4 sm:mb-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Select Team
+        </label>
         <select
           value={selectedTeamId}
           onChange={(e) => setSelectedTeamId(e.target.value)}
-          className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full sm:w-auto px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           {teams.map((team) => (
             <option key={team.id} value={team.id}>

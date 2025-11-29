@@ -1,72 +1,83 @@
-'use client';
+"use client";
 
-import { useQuery } from '@tanstack/react-query';
-import { issueApi, type FilterIssuesParams } from '../api/issue-api';
-import { projectApi } from '@/features/project/api/project-api';
-import { teamApi } from '@/features/team/api/team-api';
-import { labelApi } from '@/features/label/api/label-api';
-import Link from 'next/link';
-import { Plus, ArrowUp, ArrowDown, Minus, Search, Filter, X, Calendar } from 'lucide-react';
-import { useState, useMemo } from 'react';
-import CreateIssueModal from './create-issue-modal';
-import { cn } from '@/lib/utils';
-import LoadingSpinner from '@/components/ui/loading-spinner';
+import { useQuery } from "@tanstack/react-query";
+import { issueApi, type FilterIssuesParams } from "../api/issue-api";
+import { projectApi } from "@/features/project/api/project-api";
+import { teamApi } from "@/features/team/api/team-api";
+import { labelApi } from "@/features/label/api/label-api";
+import Link from "next/link";
+import {
+  Plus,
+  ArrowUp,
+  ArrowDown,
+  Minus,
+  Search,
+  Filter,
+  X,
+  Calendar,
+} from "lucide-react";
+import { useState, useMemo } from "react";
+import CreateIssueModal from "./create-issue-modal";
+import { cn } from "@/lib/utils";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 
 interface IssueListProps {
   projectId: string;
 }
 
 const priorityConfig = {
-  HIGH: { color: 'text-orange-600', bg: 'bg-orange-50', icon: ArrowUp },
-  MEDIUM: { color: 'text-yellow-600', bg: 'bg-yellow-50', icon: Minus },
-  LOW: { color: 'text-gray-600', bg: 'bg-gray-50', icon: ArrowDown },
+  HIGH: { color: "text-orange-600", bg: "bg-orange-50", icon: ArrowUp },
+  MEDIUM: { color: "text-yellow-600", bg: "bg-yellow-50", icon: Minus },
+  LOW: { color: "text-gray-600", bg: "bg-gray-50", icon: ArrowDown },
 };
 
-const statusOptions = ['Backlog', 'In Progress', 'Done'];
-const priorityOptions = ['LOW', 'MEDIUM', 'HIGH'];
+const statusOptions = ["Backlog", "In Progress", "Done"];
+const priorityOptions = ["LOW", "MEDIUM", "HIGH"];
 const sortOptions = [
-  { value: 'created_at', label: 'Created Date' },
-  { value: 'due_date', label: 'Due Date' },
-  { value: 'priority', label: 'Priority' },
-  { value: 'updated_at', label: 'Last Updated' },
+  { value: "created_at", label: "Created Date" },
+  { value: "due_date", label: "Due Date" },
+  { value: "priority", label: "Priority" },
+  { value: "updated_at", label: "Last Updated" },
 ];
 
 export default function IssueList({ projectId }: IssueListProps) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [selectedPriorities, setSelectedPriorities] = useState<string[]>([]);
-  const [selectedAssignee, setSelectedAssignee] = useState<string>('');
-  const [selectedLabel, setSelectedLabel] = useState<string>('');
+  const [selectedAssignee, setSelectedAssignee] = useState<string>("");
+  const [selectedLabel, setSelectedLabel] = useState<string>("");
   const [hasDueDate, setHasDueDate] = useState<boolean | undefined>(undefined);
-  const [dueDateFrom, setDueDateFrom] = useState('');
-  const [dueDateTo, setDueDateTo] = useState('');
-  const [sortBy, setSortBy] = useState<'created_at' | 'due_date' | 'priority' | 'updated_at'>('created_at');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [dueDateFrom, setDueDateFrom] = useState("");
+  const [dueDateTo, setDueDateTo] = useState("");
+  const [sortBy, setSortBy] = useState<
+    "created_at" | "due_date" | "priority" | "updated_at"
+  >("created_at");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [showFilters, setShowFilters] = useState(false);
 
   // Get project to get team_id
   const { data: project } = useQuery({
-    queryKey: ['project', projectId],
+    queryKey: ["project", projectId],
     queryFn: () => projectApi.getOne(projectId),
   });
 
   // Get team members
   const { data: teamMembers } = useQuery({
-    queryKey: ['team-members', project?.team_id],
+    queryKey: ["team-members", project?.team_id],
     queryFn: () => teamApi.getMembers(project!.team_id),
     enabled: !!project?.team_id,
   });
 
   // Get labels
   const { data: labels } = useQuery({
-    queryKey: ['labels', projectId],
+    queryKey: ["labels", projectId],
     queryFn: () => labelApi.getAll(projectId),
   });
 
   // Build filters
-  const filters: Omit<FilterIssuesParams, 'project_id'> = useMemo(() => {
-    const f: Omit<FilterIssuesParams, 'project_id'> = {};
+  const filters: Omit<FilterIssuesParams, "project_id"> = useMemo(() => {
+    const f: Omit<FilterIssuesParams, "project_id"> = {};
     if (search) f.search = search;
     if (selectedStatuses.length > 0) f.status = selectedStatuses;
     if (selectedPriorities.length > 0) f.priority = selectedPriorities;
@@ -78,36 +89,55 @@ export default function IssueList({ projectId }: IssueListProps) {
     f.sort_by = sortBy;
     f.sort_order = sortOrder;
     return f;
-  }, [search, selectedStatuses, selectedPriorities, selectedAssignee, selectedLabel, hasDueDate, dueDateFrom, dueDateTo, sortBy, sortOrder]);
+  }, [
+    search,
+    selectedStatuses,
+    selectedPriorities,
+    selectedAssignee,
+    selectedLabel,
+    hasDueDate,
+    dueDateFrom,
+    dueDateTo,
+    sortBy,
+    sortOrder,
+  ]);
 
-  const { data: issues, isLoading, error } = useQuery({
-    queryKey: ['issues', projectId, filters],
+  const {
+    data: issues,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["issues", projectId, filters],
     queryFn: () => issueApi.getAll(projectId, filters),
   });
 
   const toggleStatus = (status: string) => {
-    setSelectedStatuses(prev =>
-      prev.includes(status) ? prev.filter(s => s !== status) : [...prev, status]
+    setSelectedStatuses((prev) =>
+      prev.includes(status)
+        ? prev.filter((s) => s !== status)
+        : [...prev, status]
     );
   };
 
   const togglePriority = (priority: string) => {
-    setSelectedPriorities(prev =>
-      prev.includes(priority) ? prev.filter(p => p !== priority) : [...prev, priority]
+    setSelectedPriorities((prev) =>
+      prev.includes(priority)
+        ? prev.filter((p) => p !== priority)
+        : [...prev, priority]
     );
   };
 
   const clearFilters = () => {
-    setSearch('');
+    setSearch("");
     setSelectedStatuses([]);
     setSelectedPriorities([]);
-    setSelectedAssignee('');
-    setSelectedLabel('');
+    setSelectedAssignee("");
+    setSelectedLabel("");
     setHasDueDate(undefined);
-    setDueDateFrom('');
-    setDueDateTo('');
-    setSortBy('created_at');
-    setSortOrder('desc');
+    setDueDateFrom("");
+    setDueDateTo("");
+    setSortBy("created_at");
+    setSortOrder("desc");
   };
 
   const activeFiltersCount = useMemo(() => {
@@ -120,18 +150,27 @@ export default function IssueList({ projectId }: IssueListProps) {
     if (hasDueDate !== undefined) count++;
     if (dueDateFrom || dueDateTo) count++;
     return count;
-  }, [search, selectedStatuses, selectedPriorities, selectedAssignee, selectedLabel, hasDueDate, dueDateFrom, dueDateTo]);
+  }, [
+    search,
+    selectedStatuses,
+    selectedPriorities,
+    selectedAssignee,
+    selectedLabel,
+    hasDueDate,
+    dueDateFrom,
+    dueDateTo,
+  ]);
 
   if (isLoading) return <LoadingSpinner className="min-h-[400px]" size={32} />;
   if (error) return <div>Error loading issues</div>;
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Issues</h2>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Issues</h2>
         <button
           onClick={() => setIsCreateModalOpen(true)}
-          className="flex items-center px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"
+          className="flex items-center justify-center px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 w-full sm:w-auto"
         >
           <Plus className="w-5 h-5 mr-2" />
           New Issue
@@ -153,10 +192,10 @@ export default function IssueList({ projectId }: IssueListProps) {
         </div>
 
         {/* Filter Toggle and Sort */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            className="flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
           >
             <Filter className="w-4 h-4 mr-2" />
             Filters
@@ -167,22 +206,24 @@ export default function IssueList({ projectId }: IssueListProps) {
             )}
           </button>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 sm:space-x-3">
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 sm:flex-none px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              {sortOptions.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              {sortOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
               ))}
             </select>
             <button
-              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              className="p-2 border rounded-md hover:bg-gray-50"
-              title={`Sort ${sortOrder === 'asc' ? 'Descending' : 'Ascending'}`}
+              onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+              className="p-2 border rounded-md hover:bg-gray-50 shrink-0"
+              title={`Sort ${sortOrder === "asc" ? "Descending" : "Ascending"}`}
             >
-              {sortOrder === 'asc' ? (
+              {sortOrder === "asc" ? (
                 <ArrowUp className="w-4 h-4" />
               ) : (
                 <ArrowDown className="w-4 h-4" />
@@ -195,7 +236,9 @@ export default function IssueList({ projectId }: IssueListProps) {
         {showFilters && (
           <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium text-gray-900">Filter Issues</h3>
+              <h3 className="text-sm font-medium text-gray-900">
+                Filter Issues
+              </h3>
               {activeFiltersCount > 0 && (
                 <button
                   onClick={clearFilters}
@@ -206,20 +249,22 @@ export default function IssueList({ projectId }: IssueListProps) {
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {/* Status Filter */}
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-2">Status</label>
+                <label className="block text-xs font-medium text-gray-700 mb-2">
+                  Status
+                </label>
                 <div className="flex flex-wrap gap-2">
-                  {statusOptions.map(status => (
+                  {statusOptions.map((status) => (
                     <button
                       key={status}
                       onClick={() => toggleStatus(status)}
                       className={cn(
-                        'px-3 py-1 text-xs font-medium rounded-full border transition-colors',
+                        "px-3 py-1 text-xs font-medium rounded-full border transition-colors",
                         selectedStatuses.includes(status)
-                          ? 'bg-blue-100 text-blue-800 border-blue-300'
-                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                          ? "bg-blue-100 text-blue-800 border-blue-300"
+                          : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
                       )}
                     >
                       {status}
@@ -230,17 +275,19 @@ export default function IssueList({ projectId }: IssueListProps) {
 
               {/* Priority Filter */}
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-2">Priority</label>
+                <label className="block text-xs font-medium text-gray-700 mb-2">
+                  Priority
+                </label>
                 <div className="flex flex-wrap gap-2">
-                  {priorityOptions.map(priority => (
+                  {priorityOptions.map((priority) => (
                     <button
                       key={priority}
                       onClick={() => togglePriority(priority)}
                       className={cn(
-                        'px-3 py-1 text-xs font-medium rounded-full border transition-colors',
+                        "px-3 py-1 text-xs font-medium rounded-full border transition-colors",
                         selectedPriorities.includes(priority)
-                          ? 'bg-blue-100 text-blue-800 border-blue-300'
-                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                          ? "bg-blue-100 text-blue-800 border-blue-300"
+                          : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
                       )}
                     >
                       {priority}
@@ -251,16 +298,18 @@ export default function IssueList({ projectId }: IssueListProps) {
 
               {/* Assignee Filter */}
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-2">Assignee</label>
+                <label className="block text-xs font-medium text-gray-700 mb-2">
+                  Assignee
+                </label>
                 <select
                   value={selectedAssignee}
                   onChange={(e) => setSelectedAssignee(e.target.value)}
                   className="w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">All Assignees</option>
-                  {teamMembers?.map(member => (
-                    <option key={member.user.id} value={member.user.id}>
-                      {member.user.name}
+                  {teamMembers?.map((member) => (
+                    <option key={member.users?.id} value={member.users?.id}>
+                      {member.users?.name || 'Unknown'}
                     </option>
                   ))}
                 </select>
@@ -268,14 +317,16 @@ export default function IssueList({ projectId }: IssueListProps) {
 
               {/* Label Filter */}
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-2">Label</label>
+                <label className="block text-xs font-medium text-gray-700 mb-2">
+                  Label
+                </label>
                 <select
                   value={selectedLabel}
                   onChange={(e) => setSelectedLabel(e.target.value)}
                   className="w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">All Labels</option>
-                  {labels?.map(label => (
+                  {labels?.map((label) => (
                     <option key={label.id} value={label.id}>
                       {label.name}
                     </option>
@@ -285,10 +336,18 @@ export default function IssueList({ projectId }: IssueListProps) {
 
               {/* Due Date Filter */}
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-2">Has Due Date</label>
+                <label className="block text-xs font-medium text-gray-700 mb-2">
+                  Has Due Date
+                </label>
                 <select
-                  value={hasDueDate === undefined ? '' : String(hasDueDate)}
-                  onChange={(e) => setHasDueDate(e.target.value === '' ? undefined : e.target.value === 'true')}
+                  value={hasDueDate === undefined ? "" : String(hasDueDate)}
+                  onChange={(e) =>
+                    setHasDueDate(
+                      e.target.value === ""
+                        ? undefined
+                        : e.target.value === "true"
+                    )
+                  }
                   className="w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">All</option>
@@ -299,7 +358,9 @@ export default function IssueList({ projectId }: IssueListProps) {
 
               {/* Due Date Range */}
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-2">Due Date From</label>
+                <label className="block text-xs font-medium text-gray-700 mb-2">
+                  Due Date From
+                </label>
                 <input
                   type="date"
                   value={dueDateFrom}
@@ -309,7 +370,9 @@ export default function IssueList({ projectId }: IssueListProps) {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-2">Due Date To</label>
+                <label className="block text-xs font-medium text-gray-700 mb-2">
+                  Due Date To
+                </label>
                 <input
                   type="date"
                   value={dueDateTo}
@@ -322,8 +385,8 @@ export default function IssueList({ projectId }: IssueListProps) {
         )}
       </div>
 
-      {/* Issues Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      {/* Issues - Desktop Table View */}
+      <div className="hidden md:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -349,18 +412,27 @@ export default function IssueList({ projectId }: IssueListProps) {
               const priorityStyle = priorityConfig[issue.priority];
               const PriorityIcon = priorityStyle.icon;
               const statusStyle = statusOptions.includes(issue.status)
-                ? (issue.status === 'Backlog' ? 'bg-gray-100 text-gray-800' :
-                   issue.status === 'In Progress' ? 'bg-blue-100 text-blue-800' :
-                   'bg-green-100 text-green-800')
-                : 'bg-gray-100 text-gray-800';
+                ? issue.status === "Backlog"
+                  ? "bg-gray-100 text-gray-800"
+                  : issue.status === "In Progress"
+                  ? "bg-blue-100 text-blue-800"
+                  : "bg-green-100 text-green-800"
+                : "bg-gray-100 text-gray-800";
 
               return (
                 <tr key={issue.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
-                    <Link href={`/issues/${issue.id}`} className="text-blue-600 hover:underline">
-                      <div className="text-sm font-medium text-gray-900">{issue.title}</div>
+                    <Link
+                      href={`/issues/${issue.id}`}
+                      className="text-blue-600 hover:underline"
+                    >
+                      <div className="text-sm font-medium text-gray-900">
+                        {issue.title}
+                      </div>
                       {issue.description && (
-                        <div className="text-sm text-gray-500 line-clamp-1">{issue.description}</div>
+                        <div className="text-sm text-gray-500 line-clamp-1">
+                          {issue.description}
+                        </div>
                       )}
                     </Link>
                     {issue.labels && issue.labels.length > 0 && (
@@ -382,12 +454,23 @@ export default function IssueList({ projectId }: IssueListProps) {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', statusStyle)}>
+                    <span
+                      className={cn(
+                        "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
+                        statusStyle
+                      )}
+                    >
                       {issue.status}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', priorityStyle.bg, priorityStyle.color)}>
+                    <span
+                      className={cn(
+                        "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
+                        priorityStyle.bg,
+                        priorityStyle.color
+                      )}
+                    >
                       <PriorityIcon className="w-3 h-3 mr-1" />
                       {issue.priority}
                     </span>
@@ -406,7 +489,9 @@ export default function IssueList({ projectId }: IssueListProps) {
                             {issue.assignee.name[0]}
                           </div>
                         )}
-                        <span className="text-sm text-gray-900">{issue.assignee.name}</span>
+                        <span className="text-sm text-gray-900">
+                          {issue.assignee.name}
+                        </span>
                       </div>
                     ) : (
                       <span className="text-sm text-gray-400">Unassigned</span>
@@ -427,18 +512,133 @@ export default function IssueList({ projectId }: IssueListProps) {
             })}
           </tbody>
         </table>
-        
+
         {issues?.length === 0 && (
           <div className="p-8 text-center text-gray-500">
             {activeFiltersCount > 0
-              ? 'No issues match your filters. Try adjusting your search criteria.'
-              : 'No issues found. Create one to get started!'}
+              ? "No issues match your filters. Try adjusting your search criteria."
+              : "No issues found. Create one to get started!"}
+          </div>
+        )}
+      </div>
+
+      {/* Issues - Mobile Card View */}
+      <div className="md:hidden space-y-4">
+        {issues?.map((issue) => {
+          const priorityStyle = priorityConfig[issue.priority];
+          const PriorityIcon = priorityStyle.icon;
+          const statusStyle = statusOptions.includes(issue.status)
+            ? issue.status === "Backlog"
+              ? "bg-gray-100 text-gray-800"
+              : issue.status === "In Progress"
+              ? "bg-blue-100 text-blue-800"
+              : "bg-green-100 text-green-800"
+            : "bg-gray-100 text-gray-800";
+
+          return (
+            <Link
+              key={issue.id}
+              href={`/issues/${issue.id}`}
+              className="block p-4 bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-start justify-between mb-3">
+                <h3 className="text-sm font-medium text-gray-900 flex-1 pr-2">
+                  {issue.title}
+                </h3>
+                <span
+                  className={cn(
+                    "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium shrink-0",
+                    statusStyle
+                  )}
+                >
+                  {issue.status}
+                </span>
+              </div>
+
+              {issue.description && (
+                <p className="text-sm text-gray-500 mb-3 line-clamp-2">
+                  {issue.description}
+                </p>
+              )}
+
+              {issue.labels && issue.labels.length > 0 && (
+                <div className="flex flex-wrap gap-1 mb-3">
+                  {issue.labels.map((label) => (
+                    <span
+                      key={label.id}
+                      className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border"
+                      style={{
+                        backgroundColor: `${label.color}33`,
+                        borderColor: label.color,
+                        color: label.color,
+                      }}
+                    >
+                      {label.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center space-x-3">
+                  <span
+                    className={cn(
+                      "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
+                      priorityStyle.bg,
+                      priorityStyle.color
+                    )}
+                  >
+                    <PriorityIcon className="w-3 h-3 mr-1" />
+                    {issue.priority}
+                  </span>
+
+                  {issue.assignee ? (
+                    <div className="flex items-center">
+                      {issue.assignee.avatar_url ? (
+                        <img
+                          src={issue.assignee.avatar_url}
+                          alt={issue.assignee.name}
+                          className="w-5 h-5 rounded-full mr-1"
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center w-5 h-5 bg-gray-200 rounded-full text-gray-500 text-xs font-medium mr-1">
+                          {issue.assignee.name[0]}
+                        </div>
+                      )}
+                      <span className="text-xs text-gray-600">
+                        {issue.assignee.name}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-gray-400">Unassigned</span>
+                  )}
+                </div>
+
+                {issue.due_date && (
+                  <div className="flex items-center text-xs text-gray-600">
+                    <Calendar className="w-3 h-3 mr-1 text-gray-400" />
+                    {new Date(issue.due_date).toLocaleDateString()}
+                  </div>
+                )}
+              </div>
+            </Link>
+          );
+        })}
+
+        {issues?.length === 0 && (
+          <div className="p-8 text-center text-gray-500 bg-white rounded-lg border border-gray-200">
+            {activeFiltersCount > 0
+              ? "No issues match your filters. Try adjusting your search criteria."
+              : "No issues found. Create one to get started!"}
           </div>
         )}
       </div>
 
       {isCreateModalOpen && (
-        <CreateIssueModal projectId={projectId} onClose={() => setIsCreateModalOpen(false)} />
+        <CreateIssueModal
+          projectId={projectId}
+          onClose={() => setIsCreateModalOpen(false)}
+        />
       )}
     </div>
   );

@@ -14,6 +14,7 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { EmailService } from '../email/email.service';
 import { PASSWORD_RESET_EXPIRATION_HOURS } from '../common/constants/limits';
 import * as crypto from 'crypto';
+import type { Response } from 'express';
 
 @Injectable()
 export class AuthService {
@@ -171,7 +172,9 @@ export class AuthService {
     // Don't reveal if email exists or not (security best practice)
     if (!user) {
       // Return success even if user doesn't exist to prevent email enumeration
-      return { message: 'If the email exists, a password reset link has been sent.' };
+      return {
+        message: 'If the email exists, a password reset link has been sent.',
+      };
     }
 
     // Generate reset token
@@ -205,7 +208,9 @@ export class AuthService {
       throw new InternalServerErrorException('Failed to send reset email');
     }
 
-    return { message: 'If the email exists, a password reset link has been sent.' };
+    return {
+      message: 'If the email exists, a password reset link has been sent.',
+    };
   }
 
   async resetPassword(dto: ResetPasswordDto) {
@@ -229,12 +234,10 @@ export class AuthService {
     }
 
     // Update password in Supabase Auth
-    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-      resetToken.user_id,
-      {
+    const { error: updateError } =
+      await supabaseAdmin.auth.admin.updateUserById(resetToken.user_id, {
         password: dto.newPassword,
-      },
-    );
+      });
 
     if (updateError) {
       throw new InternalServerErrorException('Failed to reset password');
@@ -272,7 +275,7 @@ export class AuthService {
     // Check if user exists
     const { data: existingUser } = await supabaseAdmin
       .from('users')
-      .select('id')
+      .select('id, name, avatar_url')
       .eq('id', userId)
       .is('deleted_at', null)
       .single();
@@ -351,16 +354,16 @@ export class AuthService {
 
     // Verify new password matches confirmation
     if (dto.newPassword !== dto.confirmPassword) {
-      throw new BadRequestException('New password and confirmation do not match');
+      throw new BadRequestException(
+        'New password and confirmation do not match',
+      );
     }
 
     // Update password
-    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-      userId,
-      {
+    const { error: updateError } =
+      await supabaseAdmin.auth.admin.updateUserById(userId, {
         password: dto.newPassword,
-      },
-    );
+      });
 
     if (updateError) {
       throw new InternalServerErrorException('Failed to change password');
@@ -429,5 +432,108 @@ export class AuthService {
     // For now, we'll just soft delete in our database
 
     return { message: 'Account deleted successfully' };
+  }
+
+  async googleAuth(res: Response, redirectTo?: string) {
+    const supabase = this.supabaseService.getClient();
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3001';
+    const callbackUrl = `${frontendUrl}/auth/callback${redirectTo ? `?next=${encodeURIComponent(redirectTo)}` : ''}`;
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: callbackUrl,
+      },
+    });
+
+    if (error) {
+      throw new InternalServerErrorException(
+        `Failed to initiate Google OAuth: ${error.message}`,
+      );
+    }
+
+    if (data.url) {
+      res.redirect(data.url);
+    } else {
+      throw new InternalServerErrorException('Failed to get OAuth URL');
+    }
+  }
+
+  async googleCallback(res: Response, code: string, state?: string) {
+    const supabase = this.supabaseService.getClient();
+    const supabaseAdmin = this.supabaseService.getAdmin();
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3001';
+
+    if (!code) {
+      res.redirect(`${frontendUrl}/login?error=missing_code`);
+      return;
+    }
+
+    try {
+      // Exchange code for session
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+
+      if (error || !data.session || !data.user) {
+        res.redirect(`${frontendUrl}/login?error=oauth_failed`);
+        return;
+      }
+
+      // Sync user to public.users table
+      const email = data.user.email;
+      const name =
+        data.user.user_metadata?.name ||
+        data.user.user_metadata?.full_name ||
+        email ||
+        'User';
+      const avatarUrl =
+        data.user.user_metadata?.avatar_url || data.user.user_metadata?.picture;
+
+      // Check if user already exists
+      const { data: existingUser } = await supabaseAdmin
+        .from('users')
+        .select('id')
+        .eq('id', data.user.id)
+        .single();
+
+      if (!existingUser) {
+        // Create new user
+        const { error: dbError } = await supabaseAdmin.from('users').insert({
+          id: data.user.id,
+          email: email,
+          name: name,
+          avatar_url: avatarUrl,
+        });
+
+        if (dbError && dbError.code !== '23505') {
+          console.error('Failed to sync user to public.users:', dbError);
+        }
+      } else {
+        // Update existing user
+        await supabaseAdmin
+          .from('users')
+          .update({
+            name: name,
+            avatar_url: avatarUrl,
+            updated_at: new Date(),
+          })
+          .eq('id', data.user.id);
+      }
+
+      // Redirect to frontend with tokens
+      const redirectUrl = new URL(`${frontendUrl}/auth/callback`);
+      redirectUrl.searchParams.set('access_token', data.session.access_token);
+      redirectUrl.searchParams.set('refresh_token', data.session.refresh_token);
+      redirectUrl.searchParams.set(
+        'expires_in',
+        data.session.expires_in?.toString() || '3600',
+      );
+
+      res.redirect(redirectUrl.toString());
+    } catch (error) {
+      console.error('Google OAuth callback error:', error);
+      res.redirect(`${frontendUrl}/login?error=oauth_error`);
+    }
   }
 }

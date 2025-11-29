@@ -1,9 +1,10 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 @Injectable()
 export class GeminiService {
+  private readonly logger = new Logger(GeminiService.name);
   private genAI: GoogleGenerativeAI;
   private model: any;
 
@@ -13,7 +14,10 @@ export class GeminiService {
       throw new Error('GEMINI_API_KEY is not configured');
     }
     this.genAI = new GoogleGenerativeAI(apiKey);
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-pro' });
+    // Default to gemini-2.5-pro, can be overridden via GEMINI_MODEL env var
+    const modelName = this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.5-pro';
+    this.model = this.genAI.getGenerativeModel({ model: modelName });
+    this.logger.log(`Initialized Gemini model: ${modelName}`);
   }
 
   async generateText(prompt: string): Promise<string> {
@@ -21,8 +25,29 @@ export class GeminiService {
       const result = await this.model.generateContent(prompt);
       const response = await result.response;
       return response.text();
-    } catch (error) {
-      throw new InternalServerErrorException('Failed to generate text with Gemini');
+    } catch (error: any) {
+      this.logger.error('Gemini API error:', {
+        message: error?.message,
+        status: error?.status,
+        statusText: error?.statusText,
+        cause: error?.cause,
+        stack: error?.stack,
+      });
+      
+      // Provide more specific error messages
+      if (error?.message?.includes('API_KEY')) {
+        throw new InternalServerErrorException('Invalid Gemini API key. Please check your GEMINI_API_KEY configuration.');
+      }
+      if (error?.message?.includes('quota') || error?.message?.includes('rate limit')) {
+        throw new InternalServerErrorException('Gemini API quota exceeded. Please try again later.');
+      }
+      if (error?.message?.includes('safety')) {
+        throw new InternalServerErrorException('Content was blocked by Gemini safety filters.');
+      }
+      
+      throw new InternalServerErrorException(
+        `Failed to generate text with Gemini: ${error?.message || 'Unknown error'}`
+      );
     }
   }
 

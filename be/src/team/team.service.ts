@@ -744,11 +744,11 @@ export class TeamService {
       );
     }
 
-    // Get activities
+    // Get activities with actor
     const { data: activities, error } = await supabaseAdmin
       .from('team_activities')
       .select(
-        '*, actor:users!actor_id(id, name, email, avatar_url), target_user:users!target_id(id, name, email)',
+        '*, actor:users!team_activities_actor_id_fkey(id, name, email, avatar_url)',
       )
       .eq('team_id', teamId)
       .order('created_at', { ascending: false })
@@ -762,6 +762,40 @@ export class TeamService {
         error,
       );
     }
+
+    // Get target users for activities where target_type is 'MEMBER'
+    const memberActivityIds = (activities || [])
+      .filter((activity: any) => activity.target_type === 'MEMBER' && activity.target_id)
+      .map((activity: any) => activity.target_id);
+
+    let targetUsersMap: Record<string, any> = {};
+    if (memberActivityIds.length > 0) {
+      const { data: targetUsers, error: targetUsersError } = await supabaseAdmin
+        .from('users')
+        .select('id, name, email')
+        .in('id', memberActivityIds);
+
+      if (!targetUsersError && targetUsers) {
+        targetUsersMap = targetUsers.reduce((acc: Record<string, any>, user: any) => {
+          acc[user.id] = user;
+          return acc;
+        }, {});
+      }
+    }
+
+    // Enrich activities with target_user data
+    const enrichedActivities = (activities || []).map((activity: any) => {
+      if (activity.target_type === 'MEMBER' && activity.target_id && targetUsersMap[activity.target_id]) {
+        return {
+          ...activity,
+          target_user: targetUsersMap[activity.target_id],
+        };
+      }
+      return {
+        ...activity,
+        target_user: null,
+      };
+    });
 
     // Get total count
     const { count, error: countError } = await supabaseAdmin
@@ -779,7 +813,7 @@ export class TeamService {
     }
 
     return {
-      activities: activities || [],
+      activities: enrichedActivities,
       total: count || 0,
       limit,
       offset,
@@ -870,9 +904,11 @@ export class TeamService {
 
     (allIssues || []).forEach((issue: any) => {
       if (issue.assignee_id) {
-        assignedPerMember[issue.assignee_id] = (assignedPerMember[issue.assignee_id] || 0) + 1;
+        assignedPerMember[issue.assignee_id] =
+          (assignedPerMember[issue.assignee_id] || 0) + 1;
         if (issue.status === 'Done') {
-          completedPerMember[issue.assignee_id] = (completedPerMember[issue.assignee_id] || 0) + 1;
+          completedPerMember[issue.assignee_id] =
+            (completedPerMember[issue.assignee_id] || 0) + 1;
         }
       }
     });
@@ -910,7 +946,8 @@ export class TeamService {
       const projectId = issue.project_id;
       const status = issue.status || 'Backlog';
       if (statusPerProject[projectId]) {
-        statusPerProject[projectId][status] = (statusPerProject[projectId][status] || 0) + 1;
+        statusPerProject[projectId][status] =
+          (statusPerProject[projectId][status] || 0) + 1;
       }
     });
 

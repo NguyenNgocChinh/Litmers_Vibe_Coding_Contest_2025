@@ -8,6 +8,8 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  Res,
+  Query,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
@@ -77,5 +79,15 @@ export class AuthController {
   @UseGuards(AuthGuard)
   async deleteAccount(@CurrentUser() user: any, @Body() dto: DeleteAccountDto) {
     return this.authService.deleteAccount(user.id, dto);
+  }
+
+  @Get('google')
+  async googleAuth(@Res() res: Response, @Query('redirect_to') redirectTo?: string) {
+    return this.authService.googleAuth(res, redirectTo);
+  }
+
+  @Get('google/callback')
+  async googleCallback(@Res() res: Response, @Query('code') code: string, @Query('state') state?: string) {
+    return this.authService.googleCallback(res, code, state);
   }
 }
