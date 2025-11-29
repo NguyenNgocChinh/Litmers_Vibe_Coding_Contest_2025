@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/store/auth-store";
+import { getApiUrlWithFallback } from "@/lib/config";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -44,9 +45,7 @@ export default function AuthCallbackPage() {
         // Sync user with backend
         try {
           const syncResponse = await fetch(
-            `${
-              process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
-            }/auth/sync`,
+            `${getApiUrlWithFallback()}/auth/sync`,
             {
               method: "POST",
               headers: {

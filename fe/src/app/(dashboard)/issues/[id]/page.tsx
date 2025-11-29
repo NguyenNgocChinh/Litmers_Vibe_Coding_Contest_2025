@@ -11,7 +11,7 @@ import Link from 'next/link';
 import { ArrowLeft, ArrowUp, ArrowDown, Minus, Edit2, Calendar, CheckCircle2, Circle, Sparkles, Lightbulb, History, X, Trash2, Plus, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import LoadingSpinner from '@/components/ui/loading-spinner';
-import { useAuthStore } from '@/features/auth/store/auth-store';
+import { useAuthStore } from '@/store/auth-store';
 import type { IssueDetail } from '@/features/issue/types/issue-detail.types';
 import UpdateIssueModal from '@/features/issue/components/update-issue-modal';
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';

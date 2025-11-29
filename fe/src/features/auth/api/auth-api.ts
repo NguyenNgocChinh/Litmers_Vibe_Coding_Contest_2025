@@ -1,4 +1,5 @@
 import { api } from '@/lib/axios';
+import { getApiUrlWithFallback } from '@/lib/config';
 
 export const authApi = {
   login: async (data: any) => {
@@ -10,7 +11,7 @@ export const authApi = {
     return response.data;
   },
   getGoogleAuthUrl: () => {
-    return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/auth/google`;
+    return `${getApiUrlWithFallback()}/auth/google`;
   },
   getProfile: async () => {
     const response = await api.get('/auth/profile');
