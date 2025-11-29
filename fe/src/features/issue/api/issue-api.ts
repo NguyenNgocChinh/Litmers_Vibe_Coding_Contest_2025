@@ -1,5 +1,5 @@
 import { api } from '@/lib/axios';
-import type { Issue } from '../kanban/api/kanban-api';
+import type { Issue } from '@/features/kanban/api/kanban-api';
 import type { IssueDetail } from '../types/issue-detail.types';
 
 export interface FilterIssuesParams {

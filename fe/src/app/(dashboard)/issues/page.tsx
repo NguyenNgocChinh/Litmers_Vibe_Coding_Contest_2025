@@ -19,6 +19,11 @@ export default function IssuesPage() {
   const [sortField, setSortField] = useState<'created_at' | 'due_date' | 'priority' | 'updated_at'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
+  const handleTeamChange = (teamId: string) => {
+    setSelectedTeam(teamId);
+    setSelectedProject(''); // Reset project when team changes
+  };
+
   // Fetch teams and projects for filters
   const { data: teams } = useQuery({
     queryKey: ['teams'],
@@ -296,7 +301,7 @@ export default function IssuesPage() {
                     </div>
                     {issue.labels && issue.labels.length > 0 && (
                       <div className="flex flex-wrap gap-2 mt-2">
-                        {issue.labels.map((label) => (
+                        {issue.labels.map((label: { id: string; name: string; color: string }) => (
                           <span
                             key={label.id}
                             className="px-2 py-1 text-xs font-medium rounded"

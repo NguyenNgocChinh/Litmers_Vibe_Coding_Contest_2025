@@ -23,7 +23,7 @@ interface KanbanBoardProps {
   projectId: string;
 }
 
-const defaultColumns = [
+const defaultColumns: Array<{ id: string; title: string; color: string; wipLimit?: number }> = [
   { id: "Backlog", title: "Backlog", color: "border-gray-400" },
   { id: "In Progress", title: "In Progress", color: "border-blue-500" },
   { id: "Done", title: "Done", color: "border-green-500" },
